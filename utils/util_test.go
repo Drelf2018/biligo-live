@@ -1,10 +1,12 @@
-package live
+package utils_test
 
 import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"testing"
+
+	"github.com/iyear/biligo-live/utils"
 )
 
 func TestEncode(t *testing.T) {
@@ -17,23 +19,26 @@ func TestEncode(t *testing.T) {
 		"key":      "",
 	}
 	body, _ := json.Marshal(authParams)
-	fmt.Println(encode(0, 7, body))
+	fmt.Println(utils.Encode(0, 7, body))
 }
+
 func TestLog(t *testing.T) {
 	f := "%d %d 666"
 	t.Logf("[INFO] "+f, 1, 1)
 }
+
 func TestBrotliEncode(t *testing.T) {
-	t.Log(brotliEn([]byte("aaaaadsadadsa")))
+	t.Log(utils.BrotliEn([]byte("aaaaadsadadsa")))
 }
+
 func TestBrotliDecode(t *testing.T) {
-	b, err := brotliEn([]byte("aaaaadsadadsa"))
+	b, err := utils.BrotliEn([]byte("aaaaadsadadsa"))
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
 	t.Log(b)
-	b, err = brotliDe(b)
+	b, err = utils.BrotliDe(b)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
