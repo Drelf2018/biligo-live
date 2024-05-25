@@ -1,7 +1,6 @@
-package live
+package message
 
 import (
-	"encoding/binary"
 	"encoding/json"
 )
 
@@ -12,12 +11,16 @@ type Transport struct {
 	Error error
 }
 
-type Msg interface {
-	Cmd() string
-	Raw() []byte
-}
 type base struct {
 	raw []byte
+}
+
+func (b base) Cmd() string {
+	return Raw(b.raw).Cmd()
+}
+
+func (base) Parse(b []byte) (Msg, error) {
+	return base{b}, nil
 }
 
 func getData(raw []byte) json.RawMessage {
@@ -45,293 +48,51 @@ func (m *MsgGeneral) Cmd() string {
 	}
 	return cmd.CMD
 }
+
 func (m *MsgGeneral) Raw() []byte {
 	return m.raw
 }
 
 //
 
-type MsgHeartbeatReply struct {
-	base
-}
+// type MsgHeartbeatReply struct {
+// 	base
+// }
 
-func (m *MsgHeartbeatReply) Cmd() string {
-	return "HEARTBEAT_REPLY"
-}
-func (m *MsgHeartbeatReply) Raw() []byte {
-	return m.raw
-}
-func (m *MsgHeartbeatReply) GetHot() int {
-	return int(binary.BigEndian.Uint32(m.raw))
-}
+// func (m *MsgHeartbeatReply) Cmd() string {
+// 	return "HEARTBEAT_REPLY"
+// }
 
-//
+// func (m *MsgHeartbeatReply) Raw() []byte {
+// 	return m.raw
+// }
 
-// MsgDanmaku 弹幕消息
-type MsgDanmaku struct {
-	base
-}
-
-func (m *MsgDanmaku) Cmd() string {
-	return cmdDanmaku
-}
-func (m *MsgDanmaku) Raw() []byte {
-	return m.raw
-}
-
-type Danmaku struct {
-	SendMode     int    `json:"send_mode"`
-	SendFontSize int    `json:"send_font_size"`
-	DanmakuColor int64  `json:"danmaku_color"`
-	Time         int64  `json:"time"`
-	DMID         int64  `json:"dmid"`
-	MsgType      int    `json:"msg_type"`
-	Bubble       string `json:"bubble"`
-	Content      string `json:"content"`
-	MID          int64  `json:"mid"`
-	Uname        string `json:"uname"`
-	RoomAdmin    int    `json:"room_admin"`
-	Vip          int    `json:"vip"`
-	SVip         int    `json:"svip"`
-	Rank         int    `json:"rank"`
-	MobileVerify int    `json:"mobile_verify"`
-	UnameColor   string `json:"uname_color"`
-	MedalName    string `json:"medal_name"`
-	UpName       string `json:"up_name"`
-	MedalLevel   int    `json:"medal_level"`
-	UserLevel    int    `json:"user_level"`
-}
-
-func (m *MsgDanmaku) Parse() (*Danmaku, error) {
-	var t map[string]interface{}
-	if err := json.Unmarshal(m.raw, &t); err != nil {
-		return nil, err
-	}
-	info := t["info"]
-	var dm = &Danmaku{}
-	l := len(info.([]interface{}))
-	if l >= 1 {
-		h := info.([]interface{})[0].([]interface{})
-		dm.SendMode = int(h[1].(float64))
-		dm.SendFontSize = int(h[2].(float64))
-		dm.DanmakuColor = int64(h[3].(float64))
-		dm.Time = int64(h[4].(float64))
-		dm.DMID = int64(h[5].(float64))
-		dm.MsgType = int(h[10].(float64))
-		dm.Bubble = h[11].(string)
-	}
-	if l >= 2 {
-		dm.Content = info.([]interface{})[1].(string)
-	}
-	if l >= 3 {
-		h := info.([]interface{})[2].([]interface{})
-		dm.MID = int64(h[0].(float64))
-		dm.Uname = h[1].(string)
-		dm.RoomAdmin = int(h[2].(float64))
-		dm.Vip = int(h[3].(float64))
-		dm.SVip = int(h[4].(float64))
-		dm.Rank = int(h[5].(float64))
-		dm.MobileVerify = int(h[6].(float64))
-		dm.UnameColor = h[7].(string)
-	}
-	if l >= 4 {
-		h := info.([]interface{})[3].([]interface{})
-		l2 := len(h)
-		if l2 >= 1 {
-			dm.MedalLevel = int(h[0].(float64))
-		}
-		if l2 >= 2 {
-			dm.MedalName = h[1].(string)
-		}
-		if l2 >= 3 {
-			dm.UpName = h[2].(string)
-		}
-	}
-	if l >= 5 {
-		dm.UserLevel = int(info.([]interface{})[4].([]interface{})[0].(float64))
-	}
-	return dm, nil
-}
+// func (m *MsgHeartbeatReply) GetHot() int {
+// 	return int(binary.BigEndian.Uint32(m.raw))
+// }
 
 //
 
-// MsgSendGift 投喂礼物
-type MsgSendGift struct {
-	base
-}
+// // MsgDanmaku 弹幕消息
+// type MsgDanmaku struct {
+// 	base
+// }
 
-func (m *MsgSendGift) Cmd() string {
-	return cmdSendGift
-}
-func (m *MsgSendGift) Raw() []byte {
-	return m.raw
-}
+// func (m *MsgDanmaku) Cmd() string {
+// 	return CmdDanmaku
+// }
 
-// SendGift 部分interface{}抓取不到有效的信息，只能先留着
+// func (m *MsgDanmaku) Raw() []byte {
+// 	return m.raw
+// }
+
+// func (m *MsgDanmaku) Parse() (*Danmaku, error) {
+// 	var dm Danmaku
+// 	Danmaku{}.
+// 	return &dm, dm.UnmarshalJSON(m.raw)
+// }
+
 //
-/*
-	{
-	  "discount_price": 100,
-	  "giftName": "牛哇牛哇",
-	  "gold": 0,
-	  "guard_level": 0,
-	  "remain": 0,
-	  "silver": 0,
-	  "super_gift_num": 4,
-	  "top_list": null,
-	  "biz_source": "xlottery-anchor",
-	  "combo_total_coin": 400,
-	  "giftType": 0,
-	  "magnification": 1,
-	  "medal_info": {
-		"medal_name": "吉祥草",
-		"special": "",
-		"anchor_roomid": 0,
-		"anchor_uname": "",
-		"medal_color_border": 6067854,
-		"medal_color_end": 6067854,
-		"medal_color_start": 6067854,
-		"medal_level": 4,
-		"target_id": 2920960,
-		"guard_level": 0,
-		"icon_id": 0,
-		"is_lighted": 1,
-		"medal_color": 6067854
-	  },
-	  "name_color": "",
-	  "price": 100,
-	  "super": 0,
-	  "tag_image": "",
-	  "total_coin": 100,
-	  "uname": "余烬的圆舞曲",
-	  "blind_gift": null,
-	  "rnd": "1635849011111500002",
-	  "action": "投喂",
-	  "broadcast_id": 0,
-	  "effect": 0,
-	  "giftId": 31039,
-	  "is_special_batch": 0,
-	  "tid": "1635849011111500002",
-	  "batch_combo_id": "batch:gift:combo_id:9184735:2920960:31039:1635849007.7560",
-	  "float_sc_resource_id": 0,
-	  "original_gift_name": "",
-	  "batch_combo_send": null,
-	  "is_first": false,
-	  "num": 1,
-	  "rcost": 189509940,
-	  "uid": 9184735,
-	  "beatId": "",
-	  "combo_send": null,
-	  "combo_stay_time": 3,
-	  "dmscore": 32,
-	  "svga_block": 0,
-	  "timestamp": 1635849011,
-	  "coin_type": "gold",
-	  "combo_resources_id": 1,
-	  "crit_prob": 0,
-	  "demarcation": 1,
-	  "draw": 0,
-	  "effect_block": 0,
-	  "face": "http://i1.hdslb.com/bfs/face/80cd97607e8ab30acc768047db37a17c9270ec76.jpg",
-	  "send_master": null,
-	  "super_batch_gift_num": 4
-	}
-*/
-type SendGift struct {
-	Action         string `json:"action"`
-	BatchComboID   string `json:"batch_combo_id"`
-	BatchComboSend struct {
-		Action        string      `json:"action"`
-		BatchComboID  string      `json:"batch_combo_id"`
-		BatchComboNum int         `json:"batch_combo_num"`
-		BlindGift     interface{} `json:"blind_gift"`
-		GiftID        int64       `json:"gift_id"`
-		GiftName      string      `json:"gift_name"`
-		GiftNum       int         `json:"gift_num"`
-		SendMaster    interface{} `json:"send_master"`
-		Uid           int         `json:"uid"`
-		Uname         string      `json:"uname"`
-	} `json:"batch_combo_send"`
-	BeatID           string      `json:"beatId"`
-	BizSource        string      `json:"biz_source"`
-	BlindGift        interface{} `json:"blind_gift"`
-	BroadcastID      int64       `json:"broadcast_id"`
-	CoinType         string      `json:"coin_type"`
-	ComboResourcesID int64       `json:"combo_resources_id"`
-	ComboSend        struct {
-		Action     string      `json:"action"`
-		ComboID    string      `json:"combo_id"`
-		ComboNum   int         `json:"combo_num"`
-		GiftID     int64       `json:"gift_id"`
-		GiftName   string      `json:"gift_name"`
-		GiftNum    int         `json:"gift_num"`
-		SendMaster interface{} `json:"send_master"`
-		UID        int64       `json:"uid"`
-		Uname      string      `json:"uname"`
-	} `json:"combo_send"`
-	ComboStayTime     int64   `json:"combo_stay_time"`
-	ComboTotalCoin    int     `json:"combo_total_coin"`
-	CritProb          int     `json:"crit_prob"`
-	Demarcation       int     `json:"demarcation"`
-	DiscountPrice     int     `json:"discount_price"`
-	Dmscore           int     `json:"dmscore"`
-	Draw              int     `json:"draw"`
-	Effect            int     `json:"effect"`
-	EffectBlock       int     `json:"effect_block"`
-	Face              string  `json:"face"`
-	FloatScResourceID int64   `json:"float_sc_resource_id"`
-	GiftID            int64   `json:"giftId"`
-	GiftName          string  `json:"giftName"`
-	GiftType          int     `json:"giftType"`
-	Gold              int     `json:"gold"`
-	GuardLevel        int     `json:"guard_level"`
-	IsFirst           bool    `json:"is_first"`
-	IsSpecialBatch    int     `json:"is_special_batch"`
-	Magnification     float64 `json:"magnification"`
-	MedalInfo         struct {
-		AnchorRoomid     int    `json:"anchor_roomid"`
-		AnchorUname      string `json:"anchor_uname"`
-		GuardLevel       int    `json:"guard_level"`
-		IconID           int64  `json:"icon_id"`
-		IsLighted        int    `json:"is_lighted"`
-		MedalColor       int    `json:"medal_color"`
-		MedalColorBorder int64  `json:"medal_color_border"`
-		MedalColorEnd    int64  `json:"medal_color_end"`
-		MedalColorStart  int64  `json:"medal_color_start"`
-		MedalLevel       int    `json:"medal_level"`
-		MedalName        string `json:"medal_name"`
-		Special          string `json:"special"`
-		TargetID         int    `json:"target_id"`
-	} `json:"medal_info"`
-	NameColor         string      `json:"name_color"`
-	Num               int         `json:"num"`
-	OriginalGiftName  string      `json:"original_gift_name"`
-	Price             int         `json:"price"`
-	Rcost             int         `json:"rcost"`
-	Remain            int         `json:"remain"`
-	Rnd               string      `json:"rnd"`
-	SendMaster        interface{} `json:"send_master"`
-	Silver            int         `json:"silver"`
-	Super             int         `json:"super"`
-	SuperBatchGiftNum int         `json:"super_batch_gift_num"`
-	SuperGiftNum      int         `json:"super_gift_num"`
-	SvgaBlock         int         `json:"svga_block"`
-	TagImage          string      `json:"tag_image"`
-	TID               string      `json:"tid"`
-	Timestamp         int64       `json:"timestamp"`
-	TopList           interface{} `json:"top_list"`
-	TotalCoin         int         `json:"total_coin"`
-	UID               int64       `json:"uid"`
-	Uname             string      `json:"uname"`
-}
-
-func (m *MsgSendGift) Parse() (*SendGift, error) {
-	var r = &SendGift{}
-	if err := json.Unmarshal(getData(m.raw), &r); err != nil {
-		return nil, err
-	}
-	return r, nil
-}
 
 //
 
@@ -341,46 +102,13 @@ type MsgComboSend struct {
 }
 
 func (m *MsgComboSend) Cmd() string {
-	return cmdComboSend
+	return CmdComboSend
 }
 func (m *MsgComboSend) Raw() []byte {
 	return m.raw
 }
 
 //
-
-// MsgFansUpdate 粉丝数量改变
-type MsgFansUpdate struct {
-	base
-}
-
-func (m *MsgFansUpdate) Cmd() string {
-	return cmdRoomRealTimeMessageUpdate
-}
-func (m *MsgFansUpdate) Raw() []byte {
-	return m.raw
-}
-
-type FansUpdate struct {
-	// {
-	// 	"fans_club": 49182,
-	// 	"roomid": 545068,
-	// 	"fans": 1384297,
-	// 	"red_notice": -1
-	// }
-	FansClub  int   `json:"fans_club"`
-	RoomID    int64 `json:"roomid"`
-	Fans      int   `json:"fans"`
-	RedNotice int   `json:"red_notice"`
-}
-
-func (m *MsgFansUpdate) Parse() (*FansUpdate, error) {
-	var f = &FansUpdate{}
-	if err := json.Unmarshal(getData(m.raw), &f); err != nil {
-		return nil, err
-	}
-	return f, nil
-}
 
 //
 
@@ -390,7 +118,7 @@ type MsgOnlineRankCount struct {
 }
 
 func (m *MsgOnlineRankCount) Cmd() string {
-	return cmdOnlineRankCount
+	return CmdOnlineRankCount
 }
 func (m *MsgOnlineRankCount) Raw() []byte {
 	return m.raw
@@ -413,7 +141,7 @@ type MsgSuperChatMessage struct {
 }
 
 func (m *MsgSuperChatMessage) Cmd() string {
-	return cmdSuperChatMessage
+	return CmdSuperChatMessage
 }
 func (m *MsgSuperChatMessage) Raw() []byte {
 	return m.raw
@@ -558,7 +286,7 @@ type MsgHotRankSettlement struct {
 }
 
 func (m *MsgHotRankSettlement) Cmd() string {
-	return cmdHotRankSettlement
+	return CmdHotRankSettlement
 }
 func (m *MsgHotRankSettlement) Raw() []byte {
 	return m.raw
@@ -607,7 +335,7 @@ type MsgOnlineRankTop3 struct {
 }
 
 func (m *MsgOnlineRankTop3) Cmd() string {
-	return cmdOnlineRankTop3
+	return CmdOnlineRankTop3
 }
 func (m *MsgOnlineRankTop3) Raw() []byte {
 	return m.raw
@@ -648,7 +376,7 @@ type MsgRoomBlockMsg struct {
 }
 
 func (m *MsgRoomBlockMsg) Cmd() string {
-	return cmdRoomBlockMsg
+	return CmdRoomBlockMsg
 }
 func (m *MsgRoomBlockMsg) Raw() []byte {
 	return m.raw
@@ -685,7 +413,7 @@ type MsgStopLiveRoomList struct {
 }
 
 func (m *MsgStopLiveRoomList) Cmd() string {
-	return cmdStopLiveRoomList
+	return CmdStopLiveRoomList
 }
 func (m *MsgStopLiveRoomList) Raw() []byte {
 	return m.raw
@@ -710,7 +438,7 @@ type MsgOnlineRankV2 struct {
 }
 
 func (m *MsgOnlineRankV2) Cmd() string {
-	return cmdOnlineRankV2
+	return CmdOnlineRankV2
 }
 func (m *MsgOnlineRankV2) Raw() []byte {
 	return m.raw
@@ -807,7 +535,7 @@ type MsgNoticeMsg struct {
 }
 
 func (m *MsgNoticeMsg) Cmd() string {
-	return cmdNoticeMsg
+	return CmdNoticeMsg
 }
 func (m *MsgNoticeMsg) Raw() []byte {
 	return m.raw
@@ -919,7 +647,7 @@ type MsgHotRankChanged struct {
 }
 
 func (m *MsgHotRankChanged) Cmd() string {
-	return cmdHotRankChanged
+	return CmdHotRankChanged
 }
 func (m *MsgHotRankChanged) Raw() []byte {
 	return m.raw
@@ -955,7 +683,7 @@ type MsgGuardBuy struct {
 }
 
 func (m *MsgGuardBuy) Cmd() string {
-	return cmdGuardBuy
+	return CmdGuardBuy
 }
 func (m *MsgGuardBuy) Raw() []byte {
 	return m.raw
@@ -1002,7 +730,7 @@ type MsgSuperChatMessageJPN struct {
 }
 
 func (m *MsgSuperChatMessageJPN) Cmd() string {
-	return cmdSuperChatMessageJPN
+	return CmdSuperChatMessageJPN
 }
 func (m *MsgSuperChatMessageJPN) Raw() []byte {
 	return m.raw
@@ -1121,7 +849,7 @@ type MsgUserToastMsg struct {
 }
 
 func (m *MsgUserToastMsg) Cmd() string {
-	return cmdUserToastMsg
+	return CmdUserToastMsg
 }
 func (m *MsgUserToastMsg) Raw() []byte {
 	return m.raw
@@ -1188,7 +916,7 @@ type MsgSuperChatMessageDelete struct {
 }
 
 func (m *MsgSuperChatMessageDelete) Cmd() string {
-	return cmdSuperChatMessageDelete
+	return CmdSuperChatMessageDelete
 }
 func (m *MsgSuperChatMessageDelete) Raw() []byte {
 	return m.raw
@@ -1213,7 +941,7 @@ type MsgAnchorLotStart struct {
 }
 
 func (m *MsgAnchorLotStart) Cmd() string {
-	return cmdAnchorLotStart
+	return CmdAnchorLotStart
 }
 func (m *MsgAnchorLotStart) Raw() []byte {
 	return m.raw
@@ -1298,7 +1026,7 @@ type MsgAnchorLotCheckStatus struct {
 }
 
 func (m *MsgAnchorLotCheckStatus) Cmd() string {
-	return cmdAnchorLotCheckStatus
+	return CmdAnchorLotCheckStatus
 }
 func (m *MsgAnchorLotCheckStatus) Raw() []byte {
 	return m.raw
@@ -1335,7 +1063,7 @@ type MsgAnchorLotAward struct {
 }
 
 func (m *MsgAnchorLotAward) Cmd() string {
-	return cmdAnchorLotAward
+	return CmdAnchorLotAward
 }
 func (m *MsgAnchorLotAward) Raw() []byte {
 	return m.raw
@@ -1392,7 +1120,7 @@ type MsgAnchorLotEnd struct {
 }
 
 func (m *MsgAnchorLotEnd) Cmd() string {
-	return cmdAnchorLotEnd
+	return CmdAnchorLotEnd
 }
 func (m *MsgAnchorLotEnd) Raw() []byte {
 	return m.raw
@@ -1415,7 +1143,7 @@ type MsgRoomChange struct {
 }
 
 func (m *MsgRoomChange) Cmd() string {
-	return cmdRoomChange
+	return CmdRoomChange
 }
 func (m *MsgRoomChange) Raw() []byte {
 	return m.raw
@@ -1458,7 +1186,7 @@ type MsgVoiceJoinList struct {
 }
 
 func (m *MsgVoiceJoinList) Cmd() string {
-	return cmdVoiceJoinList
+	return CmdVoiceJoinList
 }
 func (m *MsgVoiceJoinList) Raw() []byte {
 	return m.raw
@@ -1497,7 +1225,7 @@ type MsgVoiceJoinRoomCountInfo struct {
 }
 
 func (m *MsgVoiceJoinRoomCountInfo) Cmd() string {
-	return cmdVoiceJoinRoomCountInfo
+	return CmdVoiceJoinRoomCountInfo
 }
 func (m *MsgVoiceJoinRoomCountInfo) Raw() []byte {
 	return m.raw
@@ -1538,7 +1266,7 @@ type MsgAttention struct {
 }
 
 func (m *MsgAttention) Cmd() string {
-	return cmdAttention
+	return CmdAttention
 }
 func (m *MsgAttention) Raw() []byte {
 	return m.raw
@@ -1552,7 +1280,7 @@ type MsgShare struct {
 }
 
 func (m *MsgShare) Cmd() string {
-	return cmdShare
+	return CmdShare
 }
 func (m *MsgShare) Raw() []byte {
 	return m.raw
@@ -1566,7 +1294,7 @@ type MsgSpecialAttention struct {
 }
 
 func (m *MsgSpecialAttention) Cmd() string {
-	return cmdSpecialAttention
+	return CmdSpecialAttention
 }
 func (m *MsgSpecialAttention) Raw() []byte {
 	return m.raw
@@ -1579,7 +1307,7 @@ type MsgSysMsg struct {
 }
 
 func (m *MsgSysMsg) Cmd() string {
-	return cmdSysMsg
+	return CmdSysMsg
 }
 func (m *MsgSysMsg) Raw() []byte {
 	return m.raw
@@ -1593,7 +1321,7 @@ type MsgPreparing struct {
 }
 
 func (m *MsgPreparing) Cmd() string {
-	return cmdPreparing
+	return CmdPreparing
 }
 func (m *MsgPreparing) Raw() []byte {
 	return m.raw
@@ -1607,7 +1335,7 @@ type MsgLive struct {
 }
 
 func (m *MsgLive) Cmd() string {
-	return cmdLive
+	return CmdLive
 }
 func (m *MsgLive) Raw() []byte {
 	return m.raw
@@ -1621,7 +1349,7 @@ type MsgRoomRank struct {
 }
 
 func (m *MsgRoomRank) Cmd() string {
-	return cmdRoomRank
+	return CmdRoomRank
 }
 func (m *MsgRoomRank) Raw() []byte {
 	return m.raw
@@ -1634,7 +1362,7 @@ type MsgRoomLimit struct {
 }
 
 func (m *MsgRoomLimit) Cmd() string {
-	return cmdRoomLimit
+	return CmdRoomLimit
 }
 func (m *MsgRoomLimit) Raw() []byte {
 	return m.raw
@@ -1647,7 +1375,7 @@ type MsgBlock struct {
 }
 
 func (m *MsgBlock) Cmd() string {
-	return cmdBlock
+	return CmdBlock
 }
 func (m *MsgBlock) Raw() []byte {
 	return m.raw
@@ -1660,7 +1388,7 @@ type MsgPkPre struct {
 }
 
 func (m *MsgPkPre) Cmd() string {
-	return cmdPkPre
+	return CmdPkPre
 }
 func (m *MsgPkPre) Raw() []byte {
 	return m.raw
@@ -1674,7 +1402,7 @@ type MsgPkEnd struct {
 }
 
 func (m *MsgPkEnd) Cmd() string {
-	return cmdPkEnd
+	return CmdPkEnd
 }
 func (m *MsgPkEnd) Raw() []byte {
 	return m.raw
@@ -1687,7 +1415,7 @@ type MsgPkSettle struct {
 }
 
 func (m *MsgPkSettle) Cmd() string {
-	return cmdPkSettle
+	return CmdPkSettle
 }
 func (m *MsgPkSettle) Raw() []byte {
 	return m.raw
@@ -1700,7 +1428,7 @@ type MsgSysGift struct {
 }
 
 func (m *MsgSysGift) Cmd() string {
-	return cmdSysGift
+	return CmdSysGift
 }
 func (m *MsgSysGift) Raw() []byte {
 	return m.raw
@@ -1714,7 +1442,7 @@ type MsgHotRank struct {
 }
 
 func (m *MsgHotRank) Cmd() string {
-	return cmdHotRank
+	return CmdHotRank
 }
 func (m *MsgHotRank) Raw() []byte {
 	return m.raw
@@ -1727,7 +1455,7 @@ type MsgActivityRedPacket struct {
 }
 
 func (m *MsgActivityRedPacket) Cmd() string {
-	return cmdActivityRedPacket
+	return CmdActivityRedPacket
 }
 func (m *MsgActivityRedPacket) Raw() []byte {
 	return m.raw
@@ -1740,7 +1468,7 @@ type MsgPkMicEnd struct {
 }
 
 func (m *MsgPkMicEnd) Cmd() string {
-	return cmdPkMicEnd
+	return CmdPkMicEnd
 }
 func (m *MsgPkMicEnd) Raw() []byte {
 	return m.raw
@@ -1753,7 +1481,7 @@ type MsgPlayTag struct {
 }
 
 func (m *MsgPlayTag) Cmd() string {
-	return cmdPlayTag
+	return CmdPlayTag
 }
 func (m *MsgPlayTag) Raw() []byte {
 	return m.raw
@@ -1767,7 +1495,7 @@ type MsgGuardMsg struct {
 }
 
 func (m *MsgGuardMsg) Cmd() string {
-	return cmdGuardMsg
+	return CmdGuardMsg
 }
 func (m *MsgGuardMsg) Raw() []byte {
 	return m.raw
@@ -1780,7 +1508,7 @@ type MsgPlayProgressBar struct {
 }
 
 func (m *MsgPlayProgressBar) Cmd() string {
-	return cmdPlayProgressBar
+	return CmdPlayProgressBar
 }
 func (m *MsgPlayProgressBar) Raw() []byte {
 	return m.raw
@@ -1793,7 +1521,7 @@ type MsgHotRoomNotify struct {
 }
 
 func (m *MsgHotRoomNotify) Cmd() string {
-	return cmdHotRoomNotify
+	return CmdHotRoomNotify
 }
 func (m *MsgHotRoomNotify) Raw() []byte {
 	return m.raw
@@ -1806,7 +1534,7 @@ type MsgRefresh struct {
 }
 
 func (m *MsgRefresh) Cmd() string {
-	return cmdRefresh
+	return CmdRefresh
 }
 func (m *MsgRefresh) Raw() []byte {
 	return m.raw
@@ -1819,7 +1547,7 @@ type MsgRound struct {
 }
 
 func (m *MsgRound) Cmd() string {
-	return cmdRound
+	return CmdRound
 }
 func (m *MsgRound) Raw() []byte {
 	return m.raw
@@ -1832,7 +1560,7 @@ type MsgWelcomeGuard struct {
 }
 
 func (m *MsgWelcomeGuard) Cmd() string {
-	return cmdWelcomeGuard
+	return CmdWelcomeGuard
 }
 func (m *MsgWelcomeGuard) Raw() []byte {
 	return m.raw
@@ -1846,7 +1574,7 @@ type MsgEntryEffect struct {
 }
 
 func (m *MsgEntryEffect) Cmd() string {
-	return cmdEntryEffect
+	return CmdEntryEffect
 }
 func (m *MsgEntryEffect) Raw() []byte {
 	return m.raw
@@ -1860,7 +1588,7 @@ type MsgWelcome struct {
 }
 
 func (m *MsgWelcome) Cmd() string {
-	return cmdWelcome
+	return CmdWelcome
 }
 func (m *MsgWelcome) Raw() []byte {
 	return m.raw
@@ -1873,7 +1601,7 @@ type MsgLiveInteractiveGame struct {
 }
 
 func (m *MsgLiveInteractiveGame) Cmd() string {
-	return cmdLiveInteractiveGame
+	return CmdLiveInteractiveGame
 }
 func (m *MsgLiveInteractiveGame) Raw() []byte {
 	return m.raw
@@ -1887,7 +1615,7 @@ type MsgVoiceJoinStatus struct {
 }
 
 func (m *MsgVoiceJoinStatus) Cmd() string {
-	return cmdVoiceJoinStatus
+	return CmdVoiceJoinStatus
 }
 func (m *MsgVoiceJoinStatus) Raw() []byte {
 	return m.raw
@@ -1901,7 +1629,7 @@ type MsgCutOff struct {
 }
 
 func (m *MsgCutOff) Cmd() string {
-	return cmdCutOff
+	return CmdCutOff
 }
 func (m *MsgCutOff) Raw() []byte {
 	return m.raw
@@ -1915,7 +1643,7 @@ type MsgSpecialGift struct {
 }
 
 func (m *MsgSpecialGift) Cmd() string {
-	return cmdSpecialGift
+	return CmdSpecialGift
 }
 func (m *MsgSpecialGift) Raw() []byte {
 	return m.raw
@@ -1929,7 +1657,7 @@ type MsgNewGuardCount struct {
 }
 
 func (m *MsgNewGuardCount) Cmd() string {
-	return cmdNewGuardCount
+	return CmdNewGuardCount
 }
 func (m *MsgNewGuardCount) Raw() []byte {
 	return m.raw
@@ -1943,7 +1671,7 @@ type MsgRoomAdmins struct {
 }
 
 func (m *MsgRoomAdmins) Cmd() string {
-	return cmdRoomAdmins
+	return CmdRoomAdmins
 }
 func (m *MsgRoomAdmins) Raw() []byte {
 	return m.raw
@@ -1956,7 +1684,7 @@ type MsgActivityBannerUpdateV2 struct {
 }
 
 func (m *MsgActivityBannerUpdateV2) Cmd() string {
-	return cmdActivityBannerUpdateV2
+	return CmdActivityBannerUpdateV2
 }
 func (m *MsgActivityBannerUpdateV2) Raw() []byte {
 	return m.raw
@@ -1970,7 +1698,7 @@ type MsgInteractWord struct {
 }
 
 func (m *MsgInteractWord) Cmd() string {
-	return cmdInteractWord
+	return CmdInteractWord
 }
 func (m *MsgInteractWord) Raw() []byte {
 	return m.raw
@@ -2065,7 +1793,7 @@ type MsgPkBattlePre struct {
 }
 
 func (m *MsgPkBattlePre) Cmd() string {
-	return cmdPkBattlePre
+	return CmdPkBattlePre
 }
 func (m *MsgPkBattlePre) Raw() []byte {
 	return m.raw
@@ -2078,7 +1806,7 @@ type MsgPkBattleSettle struct {
 }
 
 func (m *MsgPkBattleSettle) Cmd() string {
-	return cmdPkBattleSettle
+	return CmdPkBattleSettle
 }
 func (m *MsgPkBattleSettle) Raw() []byte {
 	return m.raw
@@ -2092,7 +1820,7 @@ type MsgPkBattleStart struct {
 }
 
 func (m *MsgPkBattleStart) Cmd() string {
-	return cmdPkBattleStart
+	return CmdPkBattleStart
 }
 func (m *MsgPkBattleStart) Raw() []byte {
 	return m.raw
@@ -2106,7 +1834,7 @@ type MsgPkBattleProcess struct {
 }
 
 func (m *MsgPkBattleProcess) Cmd() string {
-	return cmdPkBattleProcess
+	return CmdPkBattleProcess
 }
 func (m *MsgPkBattleProcess) Raw() []byte {
 	return m.raw
@@ -2120,7 +1848,7 @@ type MsgPkEnding struct {
 }
 
 func (m *MsgPkEnding) Cmd() string {
-	return cmdPkEnding
+	return CmdPkEnding
 }
 func (m *MsgPkEnding) Raw() []byte {
 	return m.raw
@@ -2134,7 +1862,7 @@ type MsgPkBattleEnd struct {
 }
 
 func (m *MsgPkBattleEnd) Cmd() string {
-	return cmdPkBattleEnd
+	return CmdPkBattleEnd
 }
 func (m *MsgPkBattleEnd) Raw() []byte {
 	return m.raw
@@ -2147,7 +1875,7 @@ type MsgPkBattleSettleUser struct {
 }
 
 func (m *MsgPkBattleSettleUser) Cmd() string {
-	return cmdPkBattleSettleUser
+	return CmdPkBattleSettleUser
 }
 func (m *MsgPkBattleSettleUser) Raw() []byte {
 	return m.raw
@@ -2160,7 +1888,7 @@ type MsgPkBattleSettleV2 struct {
 }
 
 func (m *MsgPkBattleSettleV2) Cmd() string {
-	return cmdPkBattleSettleV2
+	return CmdPkBattleSettleV2
 }
 func (m *MsgPkBattleSettleV2) Raw() []byte {
 	return m.raw
@@ -2174,7 +1902,7 @@ type MsgPkLotteryStart struct {
 }
 
 func (m *MsgPkLotteryStart) Cmd() string {
-	return cmdPkLotteryStart
+	return CmdPkLotteryStart
 }
 func (m *MsgPkLotteryStart) Raw() []byte {
 	return m.raw
@@ -2188,7 +1916,7 @@ type MsgPkBestUname struct {
 }
 
 func (m *MsgPkBestUname) Cmd() string {
-	return cmdPkBestUname
+	return CmdPkBestUname
 }
 func (m *MsgPkBestUname) Raw() []byte {
 	return m.raw
@@ -2202,7 +1930,7 @@ type MsgCallOnOpposite struct {
 }
 
 func (m *MsgCallOnOpposite) Cmd() string {
-	return cmdCallOnOpposite
+	return CmdCallOnOpposite
 }
 func (m *MsgCallOnOpposite) Raw() []byte {
 	return m.raw
@@ -2216,7 +1944,7 @@ type MsgAttentionOpposite struct {
 }
 
 func (m *MsgAttentionOpposite) Cmd() string {
-	return cmdAttentionOpposite
+	return CmdAttentionOpposite
 }
 func (m *MsgAttentionOpposite) Raw() []byte {
 	return m.raw
@@ -2230,7 +1958,7 @@ type MsgShareOpposite struct {
 }
 
 func (m *MsgShareOpposite) Cmd() string {
-	return cmdShareOpposite
+	return CmdShareOpposite
 }
 func (m *MsgShareOpposite) Raw() []byte {
 	return m.raw
@@ -2244,7 +1972,7 @@ type MsgAttentionOnOpposite struct {
 }
 
 func (m *MsgAttentionOnOpposite) Cmd() string {
-	return cmdAttentionOnOpposite
+	return CmdAttentionOnOpposite
 }
 func (m *MsgAttentionOnOpposite) Raw() []byte {
 	return m.raw
@@ -2258,7 +1986,7 @@ type MsgPkMatchInfo struct {
 }
 
 func (m *MsgPkMatchInfo) Cmd() string {
-	return cmdPkMatchInfo
+	return CmdPkMatchInfo
 }
 func (m *MsgPkMatchInfo) Raw() []byte {
 	return m.raw
@@ -2272,7 +2000,7 @@ type MsgPkMatchOnlineGuard struct {
 }
 
 func (m *MsgPkMatchOnlineGuard) Cmd() string {
-	return cmdPkMatchOnlineGuard
+	return CmdPkMatchOnlineGuard
 }
 func (m *MsgPkMatchOnlineGuard) Raw() []byte {
 	return m.raw
@@ -2286,7 +2014,7 @@ type MsgPkWinningStreak struct {
 }
 
 func (m *MsgPkWinningStreak) Cmd() string {
-	return cmdPkWinningStreak
+	return CmdPkWinningStreak
 }
 func (m *MsgPkWinningStreak) Raw() []byte {
 	return m.raw
@@ -2300,7 +2028,7 @@ type MsgPkDanmuMsg struct {
 }
 
 func (m *MsgPkDanmuMsg) Cmd() string {
-	return cmdPkDanmuMsg
+	return CmdPkDanmuMsg
 }
 func (m *MsgPkDanmuMsg) Raw() []byte {
 	return m.raw
@@ -2314,7 +2042,7 @@ type MsgPkSendGift struct {
 }
 
 func (m *MsgPkSendGift) Cmd() string {
-	return cmdPkSendGift
+	return CmdPkSendGift
 }
 func (m *MsgPkSendGift) Raw() []byte {
 	return m.raw
@@ -2328,7 +2056,7 @@ type MsgPkInteractWord struct {
 }
 
 func (m *MsgPkInteractWord) Cmd() string {
-	return cmdPkInteractWord
+	return CmdPkInteractWord
 }
 func (m *MsgPkInteractWord) Raw() []byte {
 	return m.raw
@@ -2342,7 +2070,7 @@ type MsgPkAttention struct {
 }
 
 func (m *MsgPkAttention) Cmd() string {
-	return cmdPkAttention
+	return CmdPkAttention
 }
 func (m *MsgPkAttention) Raw() []byte {
 	return m.raw
@@ -2356,7 +2084,7 @@ type MsgPkShare struct {
 }
 
 func (m *MsgPkShare) Cmd() string {
-	return cmdPkShare
+	return CmdPkShare
 }
 func (m *MsgPkShare) Raw() []byte {
 	return m.raw
@@ -2374,7 +2102,7 @@ type MsgWatChed struct {
 }
 
 func (m *MsgWatChed) Cmd() string {
-	return cmdWatChedChange
+	return CmdWatChedChange
 }
 func (m *MsgWatChed) Raw() []byte {
 	return m.raw
