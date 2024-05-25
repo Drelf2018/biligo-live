@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/iyear/biligo-live"
 	"log"
 	"time"
+
+	"github.com/gorilla/websocket"
+	live "github.com/iyear/biligo-live"
+	"github.com/iyear/biligo-live/message"
+	"github.com/iyear/biligo-live/utils"
 )
 
 // 同 README.md 的快速开始
@@ -27,7 +30,7 @@ func main() {
 	// 连接ws服务器
 	// dialer: ws dialer
 	// host: bilibili live ws host
-	if err := l.Conn(websocket.DefaultDialer, live.WsDefaultHost); err != nil {
+	if err := l.Conn(websocket.DefaultDialer, utils.WsDefaultHost); err != nil {
 		log.Fatal(err)
 		return
 	}
@@ -40,7 +43,7 @@ func main() {
 		// room: room id(真实ID，短号需自行转换)
 		// key: 用户标识，可留空
 		// uid: 用户UID，可随机生成
-		if err := l.Enter(ctx, room, "", 12345678); err != nil {
+		if err := l.Enter(ctx, 12345678, int(room), "", ""); err != nil {
 			log.Println("Error Encountered: ", err)
 			log.Println("Room Disconnected")
 			ifError <- err
@@ -82,41 +85,27 @@ func rev(ctx context.Context, l *live.Live) {
 		}
 	}
 }
-func handle(msg live.Msg) {
+
+func handle(msg message.Msg) {
 	// 使用 msg.(type) 进行事件跳转和处理，常见事件基本都完成了解析(Parse)功能，不常见的功能有一些实在太难抓取
 	// 更多注释和说明等待添加
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	// 心跳回应直播间人气值
-	case *live.MsgHeartbeatReply:
-		log.Printf("hot: %d\n", msg.(*live.MsgHeartbeatReply).GetHot())
+	case message.HeartbeatReply:
+		log.Printf("hot: %d\n", msg.GetHot())
 	// 弹幕消息
-	case *live.MsgDanmaku:
-		dm, err := msg.(*live.MsgDanmaku).Parse()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		fmt.Printf("弹幕: %s (%d:%s) 【%s】| %d\n", dm.Content, dm.MID, dm.Uname, dm.MedalName, dm.Time)
+	case message.Danmaku:
+		fmt.Printf("弹幕: %s (%d:%s) 【%s】| %d\n", msg.Content, msg.MID, msg.Uname, msg.MedalName, msg.Time)
 	// 礼物消息
-	case *live.MsgSendGift:
-		g, err := msg.(*live.MsgSendGift).Parse()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		fmt.Printf("%s: %s %d个%s\n", g.Action, g.Uname, g.Num, g.GiftName)
+	case message.SendGift:
+		fmt.Printf("%s: %s %d个%s\n", msg.Action, msg.Uname, msg.Num, msg.GiftName)
 	// 直播间粉丝数变化消息
-	case *live.MsgFansUpdate:
-		f, err := msg.(*live.MsgFansUpdate).Parse()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		fmt.Printf("room: %d,fans: %d,fansClub: %d\n", f.RoomID, f.Fans, f.FansClub)
+	case message.FansUpdate:
+		fmt.Printf("room: %d,fans: %d,fansClub: %d\n", msg.RoomID, msg.Fans, msg.FansClub)
 	// case:......
 
-	// General 表示live未实现的CMD命令，请自行处理raw数据。也可以提issue更新这个CMD
-	case *live.MsgGeneral:
-		fmt.Println("unknown msg type|raw:", string(msg.Raw()))
+	// Raw 表示live未实现的CMD命令，请自行处理raw数据。也可以提issue更新这个CMD
+	case message.Raw:
+		fmt.Println("unknown msg type|raw:", string(msg))
 	}
 }
