@@ -1,24 +1,29 @@
 package message
 
 import (
-	"encoding/json"
+	"strconv"
 
 	"github.com/tidwall/gjson"
 )
 
 type Raw []byte
 
-func (r Raw) Cmd() string {
+func (Raw) Cmd() string {
+	return CmdRaw
+}
+
+func (r Raw) ParseCmd() string {
 	return gjson.GetBytes(r, "cmd").Str
 }
 
-func (Raw) Parse(b []byte) (Msg, error) {
-	return Raw(b), nil
+func (r Raw) Index(idx int) []byte {
+	return []byte(gjson.GetBytes(r, strconv.Itoa(idx)).Raw)
 }
 
-func GetData[T any](raw []byte) (T, error) {
-	var d struct {
-		Data T `json:"data"`
-	}
-	return d.Data, json.Unmarshal(raw, &d)
+func (r Raw) Int(idx int) int {
+	return int(gjson.GetBytes(r, strconv.Itoa(idx)).Num)
+}
+
+func (Raw) String() string {
+	return "Raw"
 }
