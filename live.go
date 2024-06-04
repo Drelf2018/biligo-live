@@ -1,6 +1,7 @@
 package live
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -57,8 +58,8 @@ func (l *Live) ConnWithHeader(dialer *websocket.Dialer, host string, header http
 // Enter 进入房间。 Conn 后五秒内必须进入房间，否则服务器主动断开连接
 func (l *Live) Enter(ctx context.Context, uid, room int, buvid, key string) error {
 	err := l.ws.SendVerifyData(utils.VerifyData{
-		Uid:      uid,
-		Roomid:   room,
+		UID:      uid,
+		RoomID:   room,
 		Protover: 3,
 		Buvid:    buvid,
 		Platform: "web",
@@ -166,26 +167,27 @@ func (l *Live) revWithError(ctx context.Context, ifError chan<- error) {
 
 func (l *Live) handle(ctx context.Context, b []byte) {
 	defer l.report()
-	ver, op, body := utils.Decode(b)
-	switch op {
+	msg := utils.Message(b)
+	body := b[16:]
+	switch msg.Op() {
 	case utils.WsOpEnterRoomSuccess:
 		l.info("enter room success: %s", string(body))
 		l.entered <- struct{}{}
 	case utils.WsOpHeartbeatReply:
 		l.info("heartbeat reply: %d", binary.BigEndian.Uint32(body))
-		l.push(ctx, &message.HeartbeatReply{Raw: body}, nil)
+		// l.push(ctx, &message.HeartbeatReply{Raw: body}, nil)
 	case utils.WsOpMessage:
 		// 压缩版本重新解包再调用，直到 ver==0
-		switch ver {
+		switch msg.Ver() {
 		case utils.WsVerZlib:
-			de, err := utils.ZlibDe(body)
+			de, err := utils.ZlibReader(bytes.NewReader(body))
 			if err != nil {
 				l.push(ctx, nil, fmt.Errorf("failed to decode zlib msg: %s", err))
 				return
 			}
 			l.handles(ctx, l.split(de))
 		case utils.WsVerBrotli:
-			de, err := utils.BrotliDe(body)
+			de, err := utils.BrotliReader(bytes.NewReader(body))
 			if err != nil {
 				l.push(ctx, nil, fmt.Errorf("failed to decode brotli msg: %s", err))
 				return

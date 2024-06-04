@@ -90,17 +90,14 @@ func handle(msg message.Msg) {
 	// 使用 msg.(type) 进行事件跳转和处理，常见事件基本都完成了解析(Parse)功能，不常见的功能有一些实在太难抓取
 	// 更多注释和说明等待添加
 	switch msg := msg.(type) {
-	// 心跳回应直播间人气值
-	case message.HeartbeatReply:
-		log.Printf("hot: %d\n", msg.GetHot())
 	// 弹幕消息
 	case message.Danmaku:
-		fmt.Printf("弹幕: %s (%d:%s) 【%s】| %d\n", msg.Content, msg.MID, msg.Uname, msg.MedalName, msg.Time)
+		fmt.Printf("弹幕: %s (%d:%s) 【%s】| %d\n", msg.Content(), msg.UID(), msg.Uname(), msg.Medal(), msg.Time())
 	// 礼物消息
 	case message.SendGift:
 		fmt.Printf("%s: %s %d个%s\n", msg.Action, msg.Uname, msg.Num, msg.GiftName)
 	// 直播间粉丝数变化消息
-	case message.FansUpdate:
+	case message.RoomRealTimeMessageUpdate:
 		fmt.Printf("room: %d,fans: %d,fansClub: %d\n", msg.RoomID, msg.Fans, msg.FansClub)
 	// case:......
 
