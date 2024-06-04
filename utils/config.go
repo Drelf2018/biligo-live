@@ -17,6 +17,12 @@ const (
 	WsVerLen             = 2
 	WsOpLen              = 4
 	WsSequenceLen        = 4
+
+	WsVerBegin = WsPackageLen + WsHeaderLen
+	WsVerEnd   = WsVerBegin + WsVerLen
+
+	WsOpBegin = WsPackageLen + WsHeaderLen + WsVerLen
+	WsOpEnd   = WsOpBegin + WsOpLen
 )
 
 // ws header default
