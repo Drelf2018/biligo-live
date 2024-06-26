@@ -4,7 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -34,30 +33,25 @@ func Show(c *core.Core, m message.Msg) {
 
 		buf := &bytes.Buffer{}
 		json.Indent(buf, m, "", "\t")
-
-		_, err = buf.WriteTo(file)
-		if err != nil {
-			os.WriteFile("error.log", []byte(err.Error()), os.ModePerm)
-		}
+		buf.WriteTo(file)
 	}
 }
 
-func writeError(err error) {
+func WriteError(err error) {
 	if err != nil {
 		os.WriteFile("error.log", []byte(err.Error()), os.ModePerm)
+		panic(err)
 	}
-}
-
-func Start(room int) {
-	verify := utils.NewVerifyData(0, room, GetBuvid3(), GetKey(room))
-	writeError(core.Default(Show).Run(verify))
 }
 
 func main() {
-	room := flag.String("room", "", "roomid")
-	flag.Parse()
+	verify := utils.NewVerifyData(0, 21452505, GetBuvid3(), GetKey(21452505))
 
-	roomid, err := strconv.Atoi(*room)
-	writeError(err)
-	Start(roomid)
+	c := core.Default(Show)
+	c.Err = make(chan error)
+	go c.Run(verify)
+
+	for err := range c.Err {
+		WriteError(err)
+	}
 }
