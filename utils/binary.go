@@ -24,15 +24,14 @@ func AppendData(header []byte, data ...int) []byte {
 
 func Encode(ver, op int, body []byte) []byte {
 	l := WsPackHeaderTotalLen + len(body)
-	header := AppendData(
+	return append(AppendData(
 		make([]byte, 0, l),
 		WsPackageLen, l,
 		WsHeaderLen, WsPackHeaderTotalLen,
 		WsVerLen, ver,
 		WsOpLen, op,
 		WsSequenceLen, WsHeaderDefaultSequence,
-	)
-	return append(header, body...)
+	), body...)
 }
 
 func ZlibReader(r io.Reader) ([]byte, error) {
