@@ -1,6 +1,5 @@
 package utils
 
-// ops
 const (
 	WsOpHeartbeat        = 2 // 心跳
 	WsOpHeartbeatReply   = 3 // 心跳回应
@@ -9,7 +8,6 @@ const (
 	WsOpEnterRoomSuccess = 8 // 进房回应
 )
 
-// Header
 const (
 	WsPackHeaderTotalLen = 16 // 头部字节大小
 	WsPackageLen         = 4
@@ -32,10 +30,10 @@ const (
 
 // version protocol
 const (
-	WsVerPlain  = 0
-	WsVerInt    = 1
-	WsVerZlib   = 2
-	WsVerBrotli = 3
+	WsVerPlain     = 0
+	WsVerHeartbeat = 1
+	WsVerZlib      = 2
+	WsVerBrotli    = 3
 )
 
 const (

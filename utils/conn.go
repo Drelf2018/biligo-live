@@ -59,7 +59,7 @@ func NewVerifyData(uid, room int, buvid, key string) VerifyData {
 }
 
 func (c *Conn) SendVerifyData(data VerifyData) error {
-	return c.Send(WsVerInt, WsOpEnterRoom, data)
+	return c.Send(WsVerHeartbeat, WsOpEnterRoom, data)
 }
 
 var HeartbeatBody = Encode(WsVerPlain, WsOpHeartbeat, []byte("[object Object]"))
@@ -68,11 +68,8 @@ func (c *Conn) SendHeartbeat() error {
 	return c.Conn.WriteMessage(websocket.BinaryMessage, HeartbeatBody)
 }
 
-func (c *Conn) Heartbeat(ctx context.Context) (err error) {
-	err = c.SendHeartbeat()
-	if err != nil {
-		return
-	}
+func (c *Conn) Heartbeat(ctx context.Context) {
+	c.SendHeartbeat()
 
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
@@ -82,10 +79,7 @@ func (c *Conn) Heartbeat(ctx context.Context) (err error) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			err = c.SendHeartbeat()
-			if err != nil {
-				return
-			}
+			c.SendHeartbeat()
 		}
 	}
 }

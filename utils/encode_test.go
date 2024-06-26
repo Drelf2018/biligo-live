@@ -23,5 +23,5 @@ func TestEncode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Log(utils.Encode(utils.WsVerInt, utils.WsOpEnterRoom, body))
+	t.Log(utils.Encode(utils.WsVerHeartbeat, utils.WsOpEnterRoom, body))
 }
