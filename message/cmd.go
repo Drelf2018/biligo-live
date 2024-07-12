@@ -1,8 +1,11 @@
 package message
 
 // 已实装消息
+
 const (
-	CmdRaw                       = "RAW"                           // 原始消息
+	CmdRaw              = "RAW"   // 非官方事件 原始消息
+	CmdEnterRoomSuccess = "ENTER" // 非官方事件 成功连接直播间
+
 	CmdAnchorLotAward            = "ANCHOR_LOT_AWARD"              // 天选结果推送
 	CmdAnchorLotCheckStatus      = "ANCHOR_LOT_CHECKSTATUS"        // 天选时刻前的审核
 	CmdAnchorLotStart            = "ANCHOR_LOT_START"              // 天选之人开始完整信息
@@ -30,7 +33,7 @@ const (
 	CmdSendGift                  = "SEND_GIFT"                     // 投喂礼物
 	CmdStopLiveRoomList          = "STOP_LIVE_ROOM_LIST"           // 刚刚停止了直播的直播间
 	CmdSuperChatMessage          = "SUPER_CHAT_MESSAGE"            // 醒目留言
-	CmdSuperChatMessageJPN       = "SUPER_CHAT_MESSAGE_JPN"        // 醒目留言日文翻译?
+	CmdSuperChatMessageJPN       = "SUPER_CHAT_MESSAGE_JPN"        // 醒目留言日文翻译
 	CmdUserToastMsg              = "USER_TOAST_MSG"                // 上船附带的通知
 	CmdVoiceJoinList             = "VOICE_JOIN_LIST"               // 连麦申请、取消连麦申请
 	CmdVoiceJoinRoomCountInfo    = "VOICE_JOIN_ROOM_COUNT_INFO"    // 申请连麦队列变化
@@ -38,6 +41,7 @@ const (
 )
 
 // 未实装消息
+
 const (
 	CmdAttention              = "ATTENTION"                 // 用户关注
 	CmdShare                  = "SHARE"                     // 用户分享直播间

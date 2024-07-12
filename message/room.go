@@ -85,3 +85,11 @@ func (StopLiveRoomList) Cmd() string {
 }
 
 var _ = Register[StopLiveRoomList]()
+
+type EnterRoomSuccess struct {
+	Code int `json:"code"`
+}
+
+func (EnterRoomSuccess) Cmd() string {
+	return CmdEnterRoomSuccess
+}
