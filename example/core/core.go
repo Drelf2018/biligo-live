@@ -11,7 +11,6 @@ import (
 
 	"github.com/iyear/biligo-live/core"
 	"github.com/iyear/biligo-live/message"
-	"github.com/iyear/biligo-live/utils"
 )
 
 func init() {
@@ -21,6 +20,8 @@ func init() {
 
 func Show(c *core.Core, m message.Msg) {
 	switch m := m.(type) {
+	case message.EnterRoomSuccess:
+		fmt.Printf("直播间 %d 连接成功\n", c.RoomID())
 	case message.Danmaku:
 		fmt.Println(m)
 	case message.Raw:
@@ -45,13 +46,13 @@ func WriteError(err error) {
 }
 
 func main() {
-	verify := utils.NewVerifyData(0, 21452505, GetBuvid3(), GetKey(21452505))
+	room := 21452505
+	verify := core.NewVerifyData(0, room, GetBuvid3(), GetKey(room))
+	errCh := make(chan core.CoreError)
 
-	c := core.Default(Show)
-	c.Err = make(chan error)
-	go c.Run(verify)
+	go core.Default(Show, errCh).Run(verify)
 
-	for err := range c.Err {
+	for err := range errCh {
 		WriteError(err)
 	}
 }

@@ -1,5 +1,7 @@
 package utils
 
+import "net/http"
+
 const (
 	WsOpHeartbeat        = 2 // 心跳
 	WsOpHeartbeatReply   = 3 // 心跳回应
@@ -21,6 +23,8 @@ const (
 
 	WsOpBegin = WsPackageLen + WsHeaderLen + WsVerLen
 	WsOpEnd   = WsOpBegin + WsOpLen
+
+	WsPHTL = WsPackHeaderTotalLen
 )
 
 // ws header default
@@ -39,3 +43,10 @@ const (
 const (
 	WsDefaultHost = "wss://broadcastlv.chat.bilibili.com/sub"
 )
+
+var HeartbeatBody = Encode(WsVerPlain, WsOpHeartbeat, []byte("[object Object]"))
+
+var DefaultHeader = http.Header{
+	"Origin":     {"https://live.bilibili.com"},
+	"User-Agent": {"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"},
+}

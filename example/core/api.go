@@ -26,7 +26,6 @@ func GetBuvid3() string {
 	if json.NewDecoder(resp.Body).Decode(&data) != nil {
 		return ""
 	}
-
 	return data.Data.B3
 }
 
