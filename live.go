@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/iyear/biligo-live/core"
 	"github.com/iyear/biligo-live/message"
 	"github.com/iyear/biligo-live/utils"
 )
@@ -21,7 +23,7 @@ type Transport struct {
 }
 
 type Live struct {
-	ws      utils.Conn
+	ws      *websocket.Conn
 	debug   bool
 	logger  *log.Logger
 	entered chan struct{}
@@ -49,7 +51,11 @@ func (l *Live) Conn(dialer *websocket.Dialer, host string) error {
 
 // ConnWithHeader ws连接bilibili弹幕服务器 (带header)
 func (l *Live) ConnWithHeader(dialer *websocket.Dialer, host string, header http.Header) (err error) {
-	l.ws, err = utils.NewConn(dialer, host, header)
+	w, _, err := dialer.Dial(host, header)
+	if err != nil {
+		return err
+	}
+	l.ws = w
 	return
 }
 
@@ -57,7 +63,7 @@ func (l *Live) ConnWithHeader(dialer *websocket.Dialer, host string, header http
 
 // Enter 进入房间。 Conn 后五秒内必须进入房间，否则服务器主动断开连接
 func (l *Live) Enter(ctx context.Context, uid, room int, buvid, key string) error {
-	err := l.ws.SendVerifyData(utils.VerifyData{
+	enter := core.VerifyData{
 		UID:      uid,
 		RoomID:   room,
 		Protover: 3,
@@ -65,8 +71,12 @@ func (l *Live) Enter(ctx context.Context, uid, room int, buvid, key string) erro
 		Platform: "web",
 		Type:     2,
 		Key:      key,
-	})
+	}
+	body, err := json.Marshal(enter)
 	if err != nil {
+		return err
+	}
+	if err = l.ws.WriteMessage(websocket.BinaryMessage, utils.Encode(utils.WsVerPlain, utils.WsOpEnterRoom, body)); err != nil {
 		return err
 	}
 
@@ -122,7 +132,7 @@ func (l *Live) report() {
 
 func (l *Live) heartbeat(ctx context.Context, t time.Duration) {
 	hb := func(live *Live) {
-		err := l.ws.SendBytes(utils.WsVerPlain, utils.WsOpHeartbeat, nil)
+		err := live.ws.WriteMessage(websocket.BinaryMessage, utils.Encode(utils.WsVerPlain, utils.WsOpHeartbeat, nil))
 		if err != nil {
 			live.push(ctx, nil, fmt.Errorf("failed to send hearbeat: %s", err))
 		}
@@ -167,9 +177,8 @@ func (l *Live) revWithError(ctx context.Context, ifError chan<- error) {
 
 func (l *Live) handle(ctx context.Context, b []byte) {
 	defer l.report()
-	msg := utils.Message(b)
 	body := b[16:]
-	switch msg.Op() {
+	switch binary.BigEndian.Uint32(b[utils.WsOpBegin:utils.WsOpEnd]) {
 	case utils.WsOpEnterRoomSuccess:
 		l.info("enter room success: %s", string(body))
 		l.entered <- struct{}{}
@@ -178,7 +187,7 @@ func (l *Live) handle(ctx context.Context, b []byte) {
 		// l.push(ctx, &message.HeartbeatReply{Raw: body}, nil)
 	case utils.WsOpMessage:
 		// 压缩版本重新解包再调用，直到 ver==0
-		switch msg.Ver() {
+		switch binary.BigEndian.Uint16(b[utils.WsVerBegin:utils.WsVerEnd]) {
 		case utils.WsVerZlib:
 			de, err := utils.ZlibReader(bytes.NewReader(body))
 			if err != nil {
