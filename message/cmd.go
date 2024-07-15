@@ -24,6 +24,7 @@ const (
 	CmdLogInNotice               = "LOG_IN_NOTICE"                 // 登录后提示
 	CmdMessageboxUserMedalChange = "MESSAGEBOX_USER_MEDAL_CHANGE"  // 用户粉丝牌变化
 	CmdNoticeMsg                 = "NOTICE_MSG"                    // 广播消息(别的直播间投递高价礼物对所有直播间发起的广播)
+	CmdOnlineRankCount           = "ONLINE_RANK_COUNT"             // 高能榜数量更新
 	CmdOnlineRankTop3            = "ONLINE_RANK_TOP3"              // 高能榜TOP3改变
 	CmdOnlineRankV2              = "ONLINE_RANK_V2"                // 高能榜数据
 	CmdPreparing                 = "PREPARING"                     // 下播
@@ -74,7 +75,6 @@ const (
 	CmdNewGuardCount          = "NEW_GUARD_COUNT"           // 船员数量改变事件
 	CmdRoomAdmins             = "ROOM_ADMINS"               // 房管数量改变
 	CmdActivityBannerUpdateV2 = "ACTIVITY_BANNER_UPDATE_V2" //
-	CmdOnlineRankCount        = "ONLINE_RANK_COUNT"         // 高能榜数量更新
 	CmdPkBattlePre            = "PK_BATTLE_PRE"             // 大乱斗准备，10秒后开始
 	CmdPkBattleSettle         = "PK_BATTLE_SETTLE"          //
 	CmdPkBattleStart          = "PK_BATTLE_START"           // 大乱斗开始

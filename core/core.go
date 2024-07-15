@@ -29,9 +29,11 @@ func (c CoreError) Core() *Core {
 	return c.core
 }
 
+type Handler func(*Core, message.Msg)
+
 type Core struct {
 	*websocket.Conn
-	Handler func(*Core, message.Msg)
+	Handler Handler
 	Err     chan CoreError
 
 	roomID int
