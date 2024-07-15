@@ -75,32 +75,28 @@ func (c *Core) Handle(body []byte) error {
 	return nil
 }
 
-func (c *Core) HandleAll(body []byte) {
+func (c *Core) HandleReader(r io.Reader) {
+	body, err := io.ReadAll(r)
+	if c.Push(err) {
+		return
+	}
 	for i, size := 0, 0; i < len(body); i += size {
 		size = int(binary.BigEndian.Uint32(body[i : i+utils.WsPackageLen]))
 		go c.Handle(body[i+utils.WsPackHeaderTotalLen : i+size])
 	}
 }
 
-func (c *Core) HandleZlib(buf *bytes.Buffer) {
-	defer PutBuffer(buf)
-	rc, err := zlib.NewReader(buf)
+func (c *Core) HandleZlib(body []byte) {
+	rc, err := zlib.NewReader(bytes.NewBuffer(body))
 	if c.Push(err) {
 		return
 	}
 	defer rc.Close()
-	body, err := io.ReadAll(rc)
-	if !c.Push(err) {
-		c.HandleAll(body)
-	}
+	c.HandleReader(rc)
 }
 
-func (c *Core) HandleBrotli(buf *bytes.Buffer) {
-	defer PutBuffer(buf)
-	body, err := io.ReadAll(brotli.NewReader(buf))
-	if !c.Push(err) {
-		c.HandleAll(body)
-	}
+func (c *Core) HandleBrotli(body []byte) {
+	c.HandleReader(brotli.NewReader(bytes.NewBuffer(body)))
 }
 
 func (c *Core) SendBytes(ver, op int, body []byte) error {
@@ -161,19 +157,13 @@ func (c *Core) RunWithContext(ctx context.Context, data VerifyData) {
 	c.roomID = data.RoomID
 	ctx, c.cancel = context.WithCancel(ctx)
 
-	var (
-		mt   int
-		err  error
-		body []byte
-	)
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 			// 获取新消息
-			mt, body, err = c.Conn.ReadMessage()
+			mt, body, err := c.Conn.ReadMessage()
 			if mt != websocket.BinaryMessage || c.Push(err) {
 				continue
 			}
@@ -192,9 +182,9 @@ func (c *Core) RunWithContext(ctx context.Context, data VerifyData) {
 				case utils.WsVerPlain:
 					go c.Handle(body[utils.WsPHTL:])
 				case utils.WsVerZlib:
-					go c.HandleZlib(GetBuffer(body[utils.WsPHTL:]))
+					go c.HandleZlib(body[utils.WsPHTL:])
 				case utils.WsVerBrotli:
-					go c.HandleBrotli(GetBuffer(body[utils.WsPHTL:]))
+					go c.HandleBrotli(body[utils.WsPHTL:])
 				}
 			}
 		}
