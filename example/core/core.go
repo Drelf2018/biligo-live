@@ -3,19 +3,18 @@ package main
 import (
 	"bytes"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
-	"time"
+	"strings"
 
+	api "github.com/Drelf2018/go-bilibili-api"
+	"github.com/Drelf2018/req"
 	"github.com/iyear/biligo-live/core"
 	"github.com/iyear/biligo-live/message"
 )
 
 func init() {
-	os.Mkdir("messages", os.ModePerm)
-	message.UseRaw = true
+	os.Mkdir("message", os.ModePerm)
 }
 
 func Show(c *core.Core, m message.Msg) {
@@ -25,16 +24,26 @@ func Show(c *core.Core, m message.Msg) {
 	case message.Danmaku:
 		fmt.Println(m)
 	case message.Raw:
-		file, err := os.OpenFile("./messages/"+m.ParseCmd()+".json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+		cmd := m.ParseCmd()
+		name := req.NormalizeName(strings.ToLower(cmd))
+		b, err := req.NewConverter(true, true).JSONToStruct(m, strings.ToLower(cmd))
 		if err != nil {
-			t := time.Now().UnixMilli()
-			file, _ = os.OpenFile("./messages/"+strconv.Itoa(int(t))+".json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+			fmt.Printf("err: %v\n", err)
+			return
 		}
-		defer file.Close()
-
 		buf := &bytes.Buffer{}
-		json.Indent(buf, m, "", "\t")
-		buf.WriteTo(file)
+		buf.WriteString("package message\n\nconst Cmd")
+		buf.WriteString(name)
+		buf.WriteString(" = \"")
+		buf.WriteString(cmd)
+		buf.WriteString("\"\n\n")
+		buf.Write(b)
+		buf.WriteString("\n\nfunc (")
+		buf.WriteString(name)
+		buf.WriteString(") Cmd() string {\n\treturn Cmd")
+		buf.WriteString(name)
+		buf.WriteString("\n}")
+		os.WriteFile("./message/"+cmd+".go", buf.Bytes(), os.ModePerm)
 	}
 }
 
@@ -45,14 +54,26 @@ func WriteError(err error) {
 	}
 }
 
+var cred = &api.Credential{
+	SESSDATA:   "444e8f79%2C1745860278%2C1f8f3%2Aa1CjCOU8Do60BfJ-Bzf9_Nc4JQHnUTpkuAEr5tuQz9hNhTKE3yEv_aoNaQ3yZgf4josZYSVm1LUTJScC1aTENCNGl5R09CS3NKMjFXalhraElWR0U0ZlBtcW1JLWptdjN6eEtsS0E5VkFEbUJ2ZEZEYU9adFBLdklQVlY0UzNfRjRRVDNqZUx4SVF3IIEC",
+	BiliJct:    "fae10d2598dac3a0a5365cd5ba7a7528",
+	DedeUserID: "188888131",
+}
+
 func main() {
-	room := 21452505
-	verify := core.NewVerifyData(0, room, GetBuvid3(), GetKey(room))
-	errCh := make(chan core.CoreError)
+	verify, err := core.GetVerifyData(21452505, cred)
+	if err != nil {
+		panic(err)
+	}
+	ch := make(chan error)
 
-	go core.Default(Show, errCh).Run(verify)
+	room, err := core.Default(message.ParseFunc(message.DefaultFilterParser, Show), ch)
+	if err != nil {
+		panic(err)
+	}
+	go room.Run(verify)
 
-	for err := range errCh {
+	for err := range ch {
 		WriteError(err)
 	}
 }

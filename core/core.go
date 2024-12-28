@@ -14,29 +14,56 @@ import (
 
 	"github.com/andybalholm/brotli"
 	"github.com/gorilla/websocket"
-	"github.com/iyear/biligo-live/message"
-	"github.com/iyear/biligo-live/utils"
 )
 
-var ErrNoConn = errors.New("core: no existing conn")
+var ErrConnNotExist = errors.New("core: Conn does not exist")
 
+// 核心错误
 type CoreError struct {
-	error
+	err error
+
+	// 产生该错误的核心
 	core *Core
+
+	// 发生错误区域的相关参数
+	// 方便记录和排查错误
+	args []any
+}
+
+func (c CoreError) Unwrap() error {
+	return c.err
 }
 
 func (c CoreError) Core() *Core {
 	return c.core
 }
 
-type Handler func(*Core, message.Msg)
+func (c CoreError) Args() []any {
+	return c.args
+}
 
+func (c CoreError) Error() string {
+	return fmt.Sprintf("core: the %s occured an error: %v", c.core, c.err)
+}
+
+// 用于连接直播间的核心
 type Core struct {
+	// 对 *websocket.Conn 进行了封装
+	// 使用时一般不需要手动操作
 	*websocket.Conn
-	Handler Handler
-	Err     chan CoreError
 
+	// 用来处理接收到的消息 必须是并发安全的
+	// 考虑到可能多个直播间共用一个处理函数
+	// 这里还会提供发出消息的核心作为参数
+	Handler func(*Core, []byte)
+
+	// 用来接收核心运行时产生的错误
+	Err chan error
+
+	// 直播间号
 	roomID int
+
+	// 断开连接和心跳
 	cancel context.CancelFunc
 }
 
@@ -52,107 +79,83 @@ func (c *Core) Running() bool {
 	return c.cancel != nil
 }
 
-func (c *Core) Push(err error) bool {
+// 向 Err 通道发送一个经过封装的错误
+func (c *Core) Error(err error, args ...any) {
 	if err == nil {
-		return false
+		return
 	}
 	if c.Err != nil {
-		c.Err <- CoreError{error: err, core: c}
+		c.Err <- CoreError{err: err, core: c, args: args}
 	}
-	return true
 }
 
 // 处理一条消息
-func (c *Core) Handle(body []byte) error {
-	if c.Handler == nil {
-		return nil
+func (c *Core) Handle(body []byte) {
+	if c.Handler != nil {
+		c.Handler(c, body)
 	}
-	msg, err := message.Parse(body)
-	if c.Push(err) {
-		return err
-	}
-	if msg != nil {
-		c.Handler(c, msg)
-	}
-	return nil
 }
 
+// 处理读入器中的多条消息
 func (c *Core) HandleReader(r io.Reader) {
 	body, err := io.ReadAll(r)
-	if c.Push(err) {
+	if err != nil {
+		c.Error(err, body)
 		return
 	}
+	// 根据头部字段提供的长度分割多条消息
+	// 并逐一并发处理
 	for i, size := 0, 0; i < len(body); i += size {
-		size = int(binary.BigEndian.Uint32(body[i : i+utils.WsPackageLen]))
-		go c.Handle(body[i+utils.WsPackHeaderTotalLen : i+size])
+		size = int(binary.BigEndian.Uint32(body[i : i+WsPackageLen]))
+		go c.Handle(body[i+WsPackHeaderTotalLen : i+size])
 	}
 }
 
+// 处理 zlib 压缩的多条消息
 func (c *Core) HandleZlib(body []byte) {
-	rc, err := zlib.NewReader(bytes.NewBuffer(body))
-	if c.Push(err) {
+	rc, err := zlib.NewReader(bytes.NewReader(body))
+	if err != nil {
+		c.Error(err, body)
 		return
 	}
 	defer rc.Close()
 	c.HandleReader(rc)
 }
 
+// 处理 brotli 压缩的多条消息
 func (c *Core) HandleBrotli(body []byte) {
-	c.HandleReader(brotli.NewReader(bytes.NewBuffer(body)))
+	c.HandleReader(brotli.NewReader(bytes.NewReader(body)))
 }
 
-func (c *Core) SendBytes(ver, op int, body []byte) error {
-	return c.Conn.WriteMessage(websocket.BinaryMessage, utils.Encode(ver, op, body))
-}
-
-func (c *Core) SendControl(ver, op int, body []byte, deadline time.Time) error {
-	return c.Conn.WriteControl(websocket.BinaryMessage, utils.Encode(ver, op, body), deadline)
-}
-
-func (c *Core) Send(ver, op int, v any) error {
-	body, err := json.Marshal(v)
+// 发送认证包
+func (c *Core) SendVerifyData(data VerifyData) error {
+	body, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return c.SendBytes(ver, op, body)
+	return c.Conn.WriteMessage(websocket.BinaryMessage, Encode(WsVerHeartbeat, WsOpEnterRoom, body))
 }
 
-func (c *Core) SendVerifyData(data VerifyData) error {
-	return c.Send(utils.WsVerHeartbeat, utils.WsOpEnterRoom, data)
-}
-
+// 发送心跳
 func (c *Core) SendHeartbeat() error {
-	return c.Conn.WriteMessage(websocket.BinaryMessage, utils.HeartbeatBody)
+	return c.Conn.WriteMessage(websocket.BinaryMessage, HeartbeatBody)
 }
 
-func (c *Core) Heartbeat(ctx context.Context) {
-	c.Push(c.SendHeartbeat())
-
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			c.Push(c.SendHeartbeat())
-		}
-	}
-}
-
+// 启动核心
 func (c *Core) Run(data VerifyData) {
 	c.RunWithContext(context.Background(), data)
 }
 
+// 携带上下文时启动核心
 func (c *Core) RunWithContext(ctx context.Context, data VerifyData) {
 	if c.Conn == nil {
-		c.Push(ErrNoConn)
+		c.Error(ErrConnNotExist)
 		return
 	}
 
 	// 发送认证消息
-	if c.Push(c.SendVerifyData(data)) {
+	if err := c.SendVerifyData(data); err != nil {
+		c.Error(err)
 		return
 	}
 
@@ -165,34 +168,54 @@ func (c *Core) RunWithContext(ctx context.Context, data VerifyData) {
 			return
 		default:
 			// 获取新消息
-			mt, body, err := c.Conn.ReadMessage()
-			if mt != websocket.BinaryMessage || c.Push(err) {
+			messageType, body, err := c.Conn.ReadMessage()
+			if err != nil {
+				c.Error(err, body)
 				continue
 			}
-			switch binary.BigEndian.Uint32(body[utils.WsOpBegin:utils.WsOpEnd]) {
-			case utils.WsOpEnterRoomSuccess:
+			if messageType != websocket.BinaryMessage {
+				continue
+			}
+			switch binary.BigEndian.Uint32(body[WsOpBegin:WsOpEnd]) {
+			case WsOpEnterRoomSuccess:
 				// 成功进入直播间后开启心跳
 				// 并通过 c.Handler 通知调用方
-				go c.Heartbeat(ctx)
+				go func() {
+					c.Error(c.SendHeartbeat())
+
+					ticker := time.NewTicker(30 * time.Second)
+					defer ticker.Stop()
+
+					for {
+						select {
+						case <-ctx.Done():
+							return
+						case <-ticker.C:
+							c.Error(c.SendHeartbeat())
+						}
+					}
+				}()
 				if c.Handler != nil {
-					var enter message.EnterRoomSuccess
-					json.Unmarshal(body[utils.WsPHTL:], &enter)
-					go c.Handler(c, enter)
+					enter := fmt.Sprintf(`{"cmd":"ENTER","data":%s}`, body[WsPHTL:])
+					go c.Handler(c, []byte(enter))
 				}
-			case utils.WsOpMessage:
-				switch binary.BigEndian.Uint16(body[utils.WsVerBegin:utils.WsVerEnd]) {
-				case utils.WsVerPlain:
-					go c.Handle(body[utils.WsPHTL:])
-				case utils.WsVerZlib:
-					go c.HandleZlib(body[utils.WsPHTL:])
-				case utils.WsVerBrotli:
-					go c.HandleBrotli(body[utils.WsPHTL:])
+			case WsOpMessage:
+				switch binary.BigEndian.Uint16(body[WsVerBegin:WsVerEnd]) {
+				case WsVerPlain:
+					go c.Handle(body[WsPHTL:])
+				case WsVerZlib:
+					go c.HandleZlib(body[WsPHTL:])
+				case WsVerBrotli:
+					go c.HandleBrotli(body[WsPHTL:])
 				}
 			}
 		}
 	}
 }
 
+// 断开连接
+//
+// 此操作会关闭并清空 *websocket.Conn 字段
 func (c *Core) Close() error {
 	c.roomID = 0
 	if c.cancel != nil {
@@ -209,17 +232,19 @@ func (c *Core) Close() error {
 	return nil
 }
 
+// 新建 *websocket.Conn
 func (c *Core) New(dialer *websocket.Dialer, host string, header http.Header) (err error) {
 	c.Conn, _, err = dialer.Dial(host, header)
 	return
 }
 
-func New(dialer *websocket.Dialer, host string, header http.Header, handler func(*Core, message.Msg), err chan CoreError) (*Core, error) {
+// 新建核心
+func New(dialer *websocket.Dialer, host string, header http.Header, handler func(*Core, []byte), err chan error) (*Core, error) {
 	c := &Core{Handler: handler, Err: err}
 	return c, c.New(dialer, host, header)
 }
 
-func Default(handler func(*Core, message.Msg), err chan CoreError) *Core {
-	c, _ := New(websocket.DefaultDialer, utils.WsDefaultHost, utils.DefaultHeader, handler, err)
-	return c
+// 默认核心
+func Default(handler func(*Core, []byte), err chan error) (*Core, error) {
+	return New(websocket.DefaultDialer, WsDefaultHost, DefaultHeader, handler, err)
 }

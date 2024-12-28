@@ -8,8 +8,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	live "github.com/iyear/biligo-live"
+	"github.com/iyear/biligo-live/core"
 	"github.com/iyear/biligo-live/message"
-	"github.com/iyear/biligo-live/utils"
 )
 
 // 同 README.md 的快速开始
@@ -30,7 +30,7 @@ func main() {
 	// 连接ws服务器
 	// dialer: ws dialer
 	// host: bilibili live ws host
-	if err := l.Conn(websocket.DefaultDialer, utils.WsDefaultHost); err != nil {
+	if err := l.Conn(websocket.DefaultDialer, core.WsDefaultHost); err != nil {
 		log.Fatal(err)
 		return
 	}
