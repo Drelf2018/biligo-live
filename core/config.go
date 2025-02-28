@@ -1,4 +1,4 @@
-package utils
+package core
 
 import "net/http"
 
@@ -23,8 +23,6 @@ const (
 
 	WsOpBegin = WsPackageLen + WsHeaderLen + WsVerLen
 	WsOpEnd   = WsOpBegin + WsOpLen
-
-	WsPHTL = WsPackHeaderTotalLen
 )
 
 // ws header default

@@ -2,19 +2,21 @@ package live
 
 import (
 	"bytes"
+	"compress/zlib"
 	"context"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/andybalholm/brotli"
 	"github.com/gorilla/websocket"
 	"github.com/iyear/biligo-live/core"
 	"github.com/iyear/biligo-live/message"
-	"github.com/iyear/biligo-live/utils"
 )
 
 type Transport struct {
@@ -76,7 +78,7 @@ func (l *Live) Enter(ctx context.Context, uid, room int, buvid, key string) erro
 	if err != nil {
 		return err
 	}
-	if err = l.ws.WriteMessage(websocket.BinaryMessage, utils.Encode(utils.WsVerPlain, utils.WsOpEnterRoom, body)); err != nil {
+	if err = l.ws.WriteMessage(websocket.BinaryMessage, core.Encode(core.WsVerPlain, core.WsOpEnterRoom, body)); err != nil {
 		return err
 	}
 
@@ -132,7 +134,7 @@ func (l *Live) report() {
 
 func (l *Live) heartbeat(ctx context.Context, t time.Duration) {
 	hb := func(live *Live) {
-		err := live.ws.WriteMessage(websocket.BinaryMessage, utils.Encode(utils.WsVerPlain, utils.WsOpHeartbeat, nil))
+		err := live.ws.WriteMessage(websocket.BinaryMessage, core.Encode(core.WsVerPlain, core.WsOpHeartbeat, nil))
 		if err != nil {
 			live.push(ctx, nil, fmt.Errorf("failed to send hearbeat: %s", err))
 		}
@@ -178,31 +180,35 @@ func (l *Live) revWithError(ctx context.Context, ifError chan<- error) {
 func (l *Live) handle(ctx context.Context, b []byte) {
 	defer l.report()
 	body := b[16:]
-	switch binary.BigEndian.Uint32(b[utils.WsOpBegin:utils.WsOpEnd]) {
-	case utils.WsOpEnterRoomSuccess:
+	switch binary.BigEndian.Uint32(b[core.WsOpBegin:core.WsOpEnd]) {
+	case core.WsOpEnterRoomSuccess:
 		l.info("enter room success: %s", string(body))
 		l.entered <- struct{}{}
-	case utils.WsOpHeartbeatReply:
+	case core.WsOpHeartbeatReply:
 		l.info("heartbeat reply: %d", binary.BigEndian.Uint32(body))
 		// l.push(ctx, &message.HeartbeatReply{Raw: body}, nil)
-	case utils.WsOpMessage:
+	case core.WsOpMessage:
 		// 压缩版本重新解包再调用，直到 ver==0
-		switch binary.BigEndian.Uint16(b[utils.WsVerBegin:utils.WsVerEnd]) {
-		case utils.WsVerZlib:
-			de, err := utils.ZlibReader(bytes.NewReader(body))
+		switch binary.BigEndian.Uint16(b[core.WsVerBegin:core.WsVerEnd]) {
+		case core.WsVerZlib:
+			r, err := zlib.NewReader(bytes.NewReader(body))
+			var de []byte
+			if err == nil {
+				de, err = io.ReadAll(r)
+			}
 			if err != nil {
 				l.push(ctx, nil, fmt.Errorf("failed to decode zlib msg: %s", err))
 				return
 			}
 			l.handles(ctx, l.split(de))
-		case utils.WsVerBrotli:
-			de, err := utils.BrotliReader(bytes.NewReader(body))
+		case core.WsVerBrotli:
+			de, err := io.ReadAll(brotli.NewReader(bytes.NewReader(body)))
 			if err != nil {
 				l.push(ctx, nil, fmt.Errorf("failed to decode brotli msg: %s", err))
 				return
 			}
 			l.handles(ctx, l.split(de))
-		case utils.WsVerPlain:
+		case core.WsVerPlain:
 			l.handlePlain(ctx, body)
 		}
 	}
@@ -225,7 +231,7 @@ func (l *Live) handles(ctx context.Context, bs [][]byte) {
 }
 
 func (l *Live) handlePlain(ctx context.Context, body []byte) {
-	m, err := message.Parse(body)
+	m, err := message.DefaultFilterParser.UnmarshalMessage(body)
 	if err != nil {
 		l.push(ctx, nil, fmt.Errorf("failed to unmarshal plain msg: %s", err))
 		return
@@ -250,12 +256,6 @@ func (l *Live) push(ctx context.Context, msg message.Msg, err error) {
 		}
 	}(ctx, msg, err)
 }
-
-// func (l *Live) log(v ...interface{}) {
-// 	if l.debug {
-// 		l.logger.Println(v...)
-// 	}
-// }
 
 func (l *Live) logf(format string, v ...interface{}) {
 	if l.debug {

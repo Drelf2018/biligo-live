@@ -6,6 +6,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// 原始信息
 type Raw []byte
 
 func (Raw) Cmd() string {
@@ -24,6 +25,14 @@ func (r Raw) Int(idx int) int {
 	return int(gjson.GetBytes(r, strconv.Itoa(idx)).Num)
 }
 
-func (Raw) String() string {
-	return "Raw"
+func (r Raw) String() string {
+	return "Raw" + string(r)
+}
+
+type EnterRoomSuccess struct {
+	RoomID int `json:"roomid"`
+}
+
+func (EnterRoomSuccess) Cmd() string {
+	return CmdEnterRoomSuccess
 }

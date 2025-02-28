@@ -8,17 +8,20 @@ const (
 
 	CmdAnchorLotAward            = "ANCHOR_LOT_AWARD"              // 天选结果推送
 	CmdAnchorLotCheckStatus      = "ANCHOR_LOT_CHECKSTATUS"        // 天选时刻前的审核
-	CmdAnchorLotStart            = "ANCHOR_LOT_START"              // 天选之人开始完整信息
 	CmdAnchorLotEnd              = "ANCHOR_LOT_END"                // 天选之人获奖id
+	CmdAnchorLotStart            = "ANCHOR_LOT_START"              // 天选之人开始完整信息
 	CmdAreaRankChanged           = "AREA_RANK_CHANGED"             // 分区排名变化
 	CmdComboSend                 = "COMBO_SEND"                    // 连击礼物
 	CmdDanmaku                   = "DANMU_MSG"                     // 弹幕消息
 	CmdDanmakuWithCode           = "DANMU_MSG:4:0:2:2:2:0"         // 特殊情况弹幕消息
 	CmdDmInteraction             = "DM_INTERACTION"                // 弹幕互动
+	CmdEntryEffect               = "ENTRY_EFFECT"                  // 舰长、高能榜、老爷进入
 	CmdGuardBuy                  = "GUARD_BUY"                     // 用户上舰长
 	CmdHotRankChanged            = "HOT_RANK_CHANGED"              // 热门榜改变
 	CmdHotRankSettlement         = "HOT_RANK_SETTLEMENT"           // 荣登热门榜topX
 	CmdInteractWord              = "INTERACT_WORD"                 // 用户进入直播间
+	CmdLikeInfoV3Click           = "LIKE_INFO_V3_CLICK"            // 为主播点赞
+	CmdLikeInfoV3Update          = "LIKE_INFO_V3_UPDATE"           // 点赞数变化
 	CmdLittleMessageBox          = "LITTLE_MESSAGE_BOX"            // 小提示信息
 	CmdLive                      = "LIVE"                          // 开播
 	CmdLogInNotice               = "LOG_IN_NOTICE"                 // 登录后提示
@@ -28,6 +31,8 @@ const (
 	CmdOnlineRankTop3            = "ONLINE_RANK_TOP3"              // 高能榜TOP3改变
 	CmdOnlineRankV2              = "ONLINE_RANK_V2"                // 高能榜数据
 	CmdPreparing                 = "PREPARING"                     // 下播
+	CmdRankChanged               = "RANK_CHANGED"                  // 排名变化
+	CmdRevenueRankChanged        = "REVENUE_RANK_CHANGED"          // 收入排名改变
 	CmdRoomBlockMsg              = "ROOM_BLOCK_MSG"                // 用户被禁言
 	CmdRoomChange                = "ROOM_CHANGE"                   // 房间信息改变
 	CmdRoomRealTimeMessageUpdate = "ROOM_REAL_TIME_MESSAGE_UPDATE" // 粉丝数量改变
@@ -35,10 +40,12 @@ const (
 	CmdStopLiveRoomList          = "STOP_LIVE_ROOM_LIST"           // 刚刚停止了直播的直播间
 	CmdSuperChatMessage          = "SUPER_CHAT_MESSAGE"            // 醒目留言
 	CmdSuperChatMessageJPN       = "SUPER_CHAT_MESSAGE_JPN"        // 醒目留言日文翻译
+	CmdSysMsg                    = "SYS_MSG"                       // 系统消息
 	CmdUserToastMsg              = "USER_TOAST_MSG"                // 上船附带的通知
 	CmdVoiceJoinList             = "VOICE_JOIN_LIST"               // 连麦申请、取消连麦申请
 	CmdVoiceJoinRoomCountInfo    = "VOICE_JOIN_ROOM_COUNT_INFO"    // 申请连麦队列变化
 	CmdWatChedChange             = "WATCHED_CHANGE"                // 直播间看过人数变化
+	CmdWidgetBanner              = "WIDGET_BANNER"                 // 横幅组件
 )
 
 // 未实装消息
@@ -47,7 +54,6 @@ const (
 	CmdAttention              = "ATTENTION"                 // 用户关注
 	CmdShare                  = "SHARE"                     // 用户分享直播间
 	CmdSpecialAttention       = "SPECIAL_ATTENTION"         // 特别关注直播间
-	CmdSysMsg                 = "SYS_MSG"                   //
 	CmdRoomRank               = "ROOM_RANK"                 // 排名改变
 	CmdRoomLimit              = "ROOM_LIMIT"                //
 	CmdBlock                  = "BLOCK"                     //
@@ -65,7 +71,6 @@ const (
 	CmdRefresh                = "REFRESH"                   //
 	CmdRound                  = "ROUND"                     //
 	CmdWelcomeGuard           = "WELCOME_GUARD"             //
-	CmdEntryEffect            = "ENTRY_EFFECT"              // 舰长、高能榜、老爷进入
 	CmdWelcome                = "WELCOME"                   // 欢迎进入房间(似乎已废弃)
 	CmdSuperChatMessageDelete = "SUPER_CHAT_MESSAGE_DELETE" // 删除醒目留言 (似乎有时候并不会发,同时结束时间在 CmdSuperChatMessage 可以获取)
 	CmdLiveInteractiveGame    = "LIVE_INTERACTIVE_GAME"     //

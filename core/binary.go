@@ -1,11 +1,7 @@
-package utils
+package core
 
 import (
-	"compress/zlib"
 	"encoding/binary"
-	"io"
-
-	"github.com/andybalholm/brotli"
 )
 
 func AppendData(header []byte, data ...int) []byte {
@@ -32,17 +28,4 @@ func Encode(ver, op int, body []byte) []byte {
 		WsOpLen, op,
 		WsSequenceLen, WsHeaderDefaultSequence,
 	), body...)
-}
-
-func ZlibReader(r io.Reader) ([]byte, error) {
-	rc, err := zlib.NewReader(r)
-	if err != nil {
-		return nil, err
-	}
-	defer rc.Close()
-	return io.ReadAll(rc)
-}
-
-func BrotliReader(r io.Reader) ([]byte, error) {
-	return io.ReadAll(brotli.NewReader(r))
 }

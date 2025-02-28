@@ -1,3 +1,7 @@
+github.com/Drelf2018/go-bilibili-api v0.0.0-20241228192339-f668448dc29e h1:Mid7P7ux5U2KIeeqj2ewpEZxwosQTU+pi22lEA0Sgfs=
+github.com/Drelf2018/go-bilibili-api v0.0.0-20241228192339-f668448dc29e/go.mod h1:N4WhCjNoEfimWVt7zzmRSOKFW7bbOSgGYhYGx5DX9Vw=
+github.com/Drelf2018/req v0.0.0-20241228190242-211dafc7423f h1:2lZaBRazfC/s/GpVy51V+5+IBrsRNPRT3uzEDhBYQ90=
+github.com/Drelf2018/req v0.0.0-20241228190242-211dafc7423f/go.mod h1:SgQkhv/iD3+Sqvg9KCqiElH7jaXMl4OWGBKHd6MJoCE=
 github.com/andybalholm/brotli v1.1.0 h1:eLKJA0d02Lf0mVpIDgYnqXcUn0GqVmEFny3VuID1U3M=
 github.com/andybalholm/brotli v1.1.0/go.mod h1:sms7XGricyQI9K10gOSf56VKKWS4oLer58Q+mhRPtnY=
 github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0Ufc=
